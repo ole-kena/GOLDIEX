@@ -7,12 +7,12 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
       - name: Extract project
-        run: |
-          unzip GOLDIE-TOOLS-V3-GitHub-Upload.zip -d project
+        run: unzip GOLDIE-TOOLS-V3-GitHub-Upload.zip -d project
 
       - uses: actions/setup-java@v4
         with:
@@ -22,6 +22,55 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+
+      - name: Fix Java and Kotlin targets
+        run: |
+          FILE="project/android/app/build.gradle"
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path("project/android/app/build.gradle")
+          s = p.read_text()
+
+          if "compileOptions" in s:
+              s = re.sub(
+                  r'compileOptions\s*\{.*?\}',
+                  """compileOptions {
+                      sourceCompatibility JavaVersion.VERSION_17
+                      targetCompatibility JavaVersion.VERSION_17
+                  }""",
+                  s,
+                  count=1,
+                  flags=re.S
+              )
+          else:
+              s = re.sub(
+                  r'(android\s*\{)',
+                  r'\1\n    compileOptions {\n        sourceCompatibility JavaVersion.VERSION_17\n        targetCompatibility JavaVersion.VERSION_17\n    }',
+                  s,
+                  count=1
+              )
+
+          if "kotlinOptions" in s:
+              s = re.sub(
+                  r'kotlinOptions\s*\{.*?\}',
+                  "kotlinOptions { jvmTarget = '17' }",
+                  s,
+                  count=1,
+                  flags=re.S
+              )
+          else:
+              s = re.sub(
+                  r'(android\s*\{)',
+                  r'\1\n    kotlinOptions { jvmTarget = "17" }',
+                  s,
+                  count=1
+              )
+
+          p.write_text(s)
+          print("Java and Kotlin targets set to 17")
+          PY
 
       - name: Build APK
         run: gradle -p project/android assembleDebug
