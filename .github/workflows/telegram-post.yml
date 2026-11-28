@@ -1,43 +1,41 @@
 
-name: GOLDIE Daily Telegram Tips
+name: GOLDIE Daily Telegram Education
 
 on:
   schedule:
     - cron: "0 6 * * *"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   publish:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Publish GOLDIE daily tip
+      - name: Checkout GOLDIE
+        uses: actions/checkout@v4
+
+      - name: Publish daily lesson
         env:
           BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           CHANNEL: "@GOLDIE_Official_Channel"
         run: |
-          DAY=$(date -u +%u)
+          set -e
 
-          case "$DAY" in
-            1) TOPIC="Market Structure" ;;
-            2) TOPIC="Liquidity" ;;
-            3) TOPIC="Fair Value Gaps" ;;
-            4) TOPIC="Order Blocks and Breakers" ;;
-            5) TOPIC="Risk Management" ;;
-            6) TOPIC="Trading Psychology" ;;
-            7) TOPIC="Weekly Trading Lesson" ;;
-          esac
+          DAY=$(date -u +%j)
 
-          MESSAGE="👑 GOLDIE DAILY TRADING TIP
+          MESSAGE=$(jq -r --argjson day "$DAY" \
+            '.[] | select(.day == $day) | .message' \
+            content/daily-tips.json)
 
-          📚 Today's Topic: $TOPIC
+          if [ -z "$MESSAGE" ] || [ "$MESSAGE" = "null" ]; then
+            echo "No lesson found for day $DAY"
+            exit 1
+          fi
 
-          Learn the concept. Understand the market. Wait for confirmation. Never force a trade.
-
-          Remember: Protect your capital before chasing profits.
-
-          GOLDIE — BUILT FOR A WORLD BEYOND LIMITS."
-
-          curl -sS -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+          curl --fail-with-body -sS -X POST \
+            "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
             -d "chat_id=${CHANNEL}" \
             --data-urlencode "text=${MESSAGE}"
