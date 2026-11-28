@@ -1,0 +1,43 @@
+
+name: GOLDIE Daily Telegram Tips
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Publish GOLDIE daily tip
+        env:
+          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHANNEL: "@GOLDIE_Official_Channel"
+        run: |
+          DAY=$(date -u +%u)
+
+          case "$DAY" in
+            1) TOPIC="Market Structure" ;;
+            2) TOPIC="Liquidity" ;;
+            3) TOPIC="Fair Value Gaps" ;;
+            4) TOPIC="Order Blocks and Breakers" ;;
+            5) TOPIC="Risk Management" ;;
+            6) TOPIC="Trading Psychology" ;;
+            7) TOPIC="Weekly Trading Lesson" ;;
+          esac
+
+          MESSAGE="👑 GOLDIE DAILY TRADING TIP
+
+          📚 Today's Topic: $TOPIC
+
+          Learn the concept. Understand the market. Wait for confirmation. Never force a trade.
+
+          Remember: Protect your capital before chasing profits.
+
+          GOLDIE — BUILT FOR A WORLD BEYOND LIMITS."
+
+          curl -sS -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+            -d "chat_id=${CHANNEL}" \
+            --data-urlencode "text=${MESSAGE}"
